@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Recall Memory Exercise</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Lucide React icons as inline SVG components
+        const Brain = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+        );
+
+        const RotateCcw = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+        );
+
+        const Play = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        );
+
+        const Settings = ({ className }) => (
+            <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        );
+
+        function WordRecallGame() {
+            const [gameState, setGameState] = useState('menu');
+            const [wordCount, setWordCount] = useState(5);
+            const [syllableLength, setSyllableLength] = useState('mixed'); // 'short' (2-3), 'long' (4-5), 'mixed'
+            const [sequence, setSequence] = useState([]);
+            const [currentRecallIndex, setCurrentRecallIndex] = useState(0);
+            const [userInput, setUserInput] = useState('');
+            const [feedback, setFeedback] = useState(null);
+            const [userAnswers, setUserAnswers] = useState([]);
+            const [score, setScore] = useState({ correct: 0, total: 0 });
+
+            // Word pool organized by syllable count
+            const wordsByLength = {
+                short: [ // 2-3 syllables
+                    'apple', 'garden', 'window', 'coffee', 'simple',
+                    'banana', 'camera', 'elephant', 'bicycle', 'calendar',
+                    'envelope', 'hospital', 'theater', 'library', 'monitor',
+                    'November', 'officer', 'passenger', 'recipe', 'telephone',
+                    'umbrella', 'vacation', 'cinema', 'detective', 'emperor',
+                    'factory', 'gallery', 'harmony', 'internet', 'journalist',
+                    'kangaroo', 'memory', 'octopus', 'pyramid', 'radio',
+                    'satellite', 'tornado', 'universe', 'volcano', 'musical',
+                    'basket', 'chicken', 'doctor', 'flower', 'laptop',
+                    'market', 'oxygen', 'paper', 'robot', 'temple'
+                ],
+                long: [ // 4-5 syllables
+                    'ability', 'activity', 'emergency', 'community', 'discovery',
+                    'education', 'geography', 'helicopter', 'information', 'kilometers',
+                    'literature', 'mathematics', 'navigator', 'operation', 'photographer',
+                    'reality', 'society', 'technology', 'university', 'vocabulary',
+                    'ordinary', 'particular', 'remember', 'september', 'television',
+                    'understand', 'watermelon', 'calculator', 'deliveries', 'especially',
+                    'competition', 'dictionary', 'electricity', 'generation', 'identification',
+                    'interesting', 'necessary', 'observation', 'personality', 'refrigerator',
+                    'imagination', 'communication', 'celebration', 'disappointment', 'evaluation',
+                    'revolutionary', 'opportunity', 'extraordinary', 'popularity', 'architecture'
+                ]
+            };
+
+            const getRandomWords = (count, lengthType) => {
+                let pool = [];
+                if (lengthType === 'mixed') {
+                    pool = [...wordsByLength.short, ...wordsByLength.long];
+                } else {
+                    pool = wordsByLength[lengthType];
+                }
+                const shuffled = [...pool].sort(() => Math.random() - 0.5);
+                return shuffled.slice(0, count);
+            };
+
+            const goToSetup = () => {
+                setGameState('setup');
+            };
+
+            const startGame = () => {
+                const newSequence = getRandomWords(wordCount, syllableLength);
+                setSequence(newSequence);
+                setCurrentRecallIndex(0);
+                setUserAnswers([]);
+                setScore({ correct: 0, total: 0 });
+                setFeedback(null);
+                setGameState('showing');
+                
+                // Display time: 2 seconds base + 800ms per word
+                const displayTime = 2000 + (wordCount * 800);
+
+		setTimeout(() => {
+                    setGameState('recalling');
+                }, displayTime);
+                
+                // Store timeout ID so we can clear it if user goes back
+              //  const timeoutId = setTimeout(() => {
+              //      if (gameState === 'showing') {  // Only transition if still on showing screen
+              //          setGameState('recalling');
+              //      }
+              //  }, displayTime);
+                
+                // Store timeout ID for potential cleanup
+                window.currentGameTimeout = timeoutId;
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                
+                const correctWord = sequence[currentRecallIndex];
+                const userWord = userInput.trim().toLowerCase();
+                const isCorrect = userWord === correctWord.toLowerCase();
+                
+                setScore(prev => ({
+                    correct: prev.correct + (isCorrect ? 1 : 0),
+                    total: prev.total + 1
+                }));
+                
+                setUserAnswers(prev => [...prev, {
+                    userAnswer: userInput.trim(),
+                    correctAnswer: correctWord,
+                    isCorrect,
+                    position: currentRecallIndex
+                }]);
+                
+                setFeedback({
+                    isCorrect,
+                    correctWord,
+                    userAnswer: userInput.trim(),
+                    position: currentRecallIndex + 1
+                });
+                
+                setUserInput('');
+                
+                // Longer delay for incorrect answers
+                const delay = isCorrect ? 1000 : 2500;
+                
+                setTimeout(() => {
+                    setFeedback(null);
+                    const nextIndex = currentRecallIndex + 1;
+                    
+                    if (nextIndex < sequence.length) {
+                        setCurrentRecallIndex(nextIndex);
+                    } else {
+                        setGameState('completed');
+                    }
+                }, delay);
+            };
+
+            const resetGame = () => {
+                // Generate new words and go straight to showing screen
+                const newSequence = getRandomWords(wordCount, syllableLength);
+                setSequence(newSequence);
+                setCurrentRecallIndex(0);
+                setUserInput('');
+                setFeedback(null);
+                setUserAnswers([]);
+                setScore({ correct: 0, total: 0 });
+                setGameState('showing');
+                
+                // Auto-transition to recalling after display time
+                const displayTime = 2000 + (wordCount * 800);
+                setTimeout(() => {
+                    setGameState('recalling');
+                }, displayTime);
+            };
+
+            const handleWordCountChange = (e) => {
+                const value = parseInt(e.target.value);
+                if (value >= 3 && value <= 10) {
+                    setWordCount(value);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-2xl w-full">
+                        <div className="flex items-center justify-center mb-6">
+                            <Brain className="w-12 h-12 text-teal-600 mr-3" />
+                            <h1 className="text-3xl font-bold text-gray-800">Word Recall</h1>
+                        </div>
+
+                        {gameState === 'menu' && (
+                            <div className="text-center">
+                                <h2 className="text-xl font-semibold text-teal-600 mb-4">
+                                    Train your verbal memory!
+                                </h2>
+                                <div className="text-left bg-teal-50 rounded-lg p-5 mb-6 text-gray-700">
+                                    <p className="font-semibold mb-3">How it works:</p>
+                                    <ol className="space-y-2 text-sm">
+                                        <li className="flex">
+                                            <span className="font-bold text-teal-600 mr-2">1.</span>
+                                            <span>Choose your difficulty: number of words and word length</span>
+                                        </li>
+                                        <li className="flex">
+                                            <span className="font-bold text-teal-600 mr-2">2.</span>
+                                            <span>Memorize the words <strong>in order</strong></span>
+                                        </li>
+                                        <li className="flex">
+                                            <span className="font-bold text-teal-600 mr-2">3.</span>
+                                            <span>Type each word back <strong>one by one</strong> in the same order</span>
+                                        </li>
+                                        <li className="flex">
+                                            <span className="font-bold text-teal-600 mr-2">4.</span>
+                                            <span>Get immediate feedback after each entry</span>
+                                        </li>
+                                    </ol>
+                                    <div className="mt-4 p-3 bg-white rounded border-2 border-teal-200">
+                                        <p className="text-xs font-semibold text-teal-700 mb-1">Example:</p>
+                                        <p className="text-sm">See: <span className="font-semibold">camera, hospital, envelope, bicycle, umbrella</span></p>
+                                        <p className="text-sm mt-1">Enter: <span className="font-semibold text-green-600">camera → hospital → envelope → bicycle → umbrella</span></p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={goToSetup}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-8 rounded-lg flex items-center justify-center mx-auto transition-colors shadow-lg"
+                                >
+                                    <Play className="w-5 h-5 mr-2" />
+                                    Start Exercise
+                                </button>
+                            </div>
+                        )}
+
+                        {gameState === 'setup' && (
+                            <div className="text-center">
+                                <h2 className="text-xl font-semibold text-teal-600 mb-6">
+                                    Choose Your Challenge
+                                </h2>
+                                
+                                <div className="bg-teal-50 rounded-lg p-6 mb-4">
+                                    <label className="block text-gray-700 font-semibold mb-3">
+                                        How many words?
+                                    </label>
+                                    
+                                    <div className="flex items-center justify-center gap-4 mb-4">
+                                        <input
+                                            type="number"
+                                            min="3"
+                                            max="10"
+                                            value={wordCount}
+                                            onChange={handleWordCountChange}
+                                            className="w-24 text-3xl text-center border-2 border-teal-300 rounded-lg p-3 focus:outline-none focus:border-teal-600"
+                                        />
+                                        <span className="text-gray-600">words</span>
+                                    </div>
+                                    
+                                    <input
+                                        type="range"
+                                        min="3"
+                                        max="10"
+                                        value={wordCount}
+                                        onChange={handleWordCountChange}
+                                        className="w-full h-2 bg-teal-200 rounded-lg appearance-none cursor-pointer"
+                                        style={{
+                                            background: `linear-gradient(to right, #0d9488 0%, #0d9488 ${((wordCount - 3) / 7) * 100}%, #ccfbf1 ${((wordCount - 3) / 7) * 100}%, #ccfbf1 100%)`
+                                        }}
+                                    />
+                                    
+                                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                        <span>3 (Easier)</span>
+                                        <span>10 (Harder)</span>
+                                    </div>
+                                </div>
+
+                                <div className="bg-teal-50 rounded-lg p-6 mb-6">
+                                    <label className="block text-gray-700 font-semibold mb-3">
+                                        Word length (syllables)
+                                    </label>
+                                    
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <button
+                                            onClick={() => setSyllableLength('short')}
+                                            className={`py-3 px-4 rounded-lg font-semibold transition-all ${
+                                                syllableLength === 'short'
+                                                    ? 'bg-teal-600 text-white shadow-lg'
+                                                    : 'bg-white text-gray-700 border-2 border-teal-200 hover:border-teal-400'
+                                            }`}
+                                        >
+                                            <div className="text-sm">Short</div>
+                                            <div className="text-xs opacity-75">2-3 syllables</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setSyllableLength('mixed')}
+                                            className={`py-3 px-4 rounded-lg font-semibold transition-all ${
+                                                syllableLength === 'mixed'
+                                                    ? 'bg-teal-600 text-white shadow-lg'
+                                                    : 'bg-white text-gray-700 border-2 border-teal-200 hover:border-teal-400'
+                                            }`}
+                                        >
+                                            <div className="text-sm">Mixed</div>
+                                            <div className="text-xs opacity-75">2-5 syllables</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setSyllableLength('long')}
+                                            className={`py-3 px-4 rounded-lg font-semibold transition-all ${
+                                                syllableLength === 'long'
+                                                    ? 'bg-teal-600 text-white shadow-lg'
+                                                    : 'bg-white text-gray-700 border-2 border-teal-200 hover:border-teal-400'
+                                            }`}
+                                        >
+                                            <div className="text-sm">Long</div>
+                                            <div className="text-xs opacity-75">4-5 syllables</div>
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="mt-4 text-sm text-gray-600">
+                                        <p>Display time: <strong>{((2 + wordCount*0.8)).toFixed(1)}s</strong></p>
+                                        <p className="text-xs mt-1 italic">
+                                            {syllableLength === 'short' && 'Short words like: apple, camera, bicycle'}
+                                            {syllableLength === 'mixed' && 'Mixed words: camera, technology, window'}
+                                            {syllableLength === 'long' && 'Long words like: university, refrigerator, extraordinary'}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-3 justify-center">
+                                    <button
+                                        onClick={() => setGameState('menu')}
+                                        className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors"
+                                    >
+                                        View Instructions
+                                    </button>
+                                    <button
+                                        onClick={startGame}
+                                        className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-8 rounded-lg flex items-center transition-colors shadow-lg"
+                                    >
+                                        <Play className="w-5 h-5 mr-2" />
+                                        Begin
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'showing' && (
+                            <div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <button
+                                        onClick={() => setGameState('setup')}
+                                        className="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors"
+                                    >
+                                        Back
+                                    </button>
+                                    <div className="text-sm text-gray-600">
+                                        Memorize these words in order...
+                                    </div>
+                                    <div className="w-20"></div> {/* Spacer for centering */}
+                                </div>
+                                <div className="bg-gradient-to-r from-teal-100 to-cyan-100 rounded-xl p-8">
+                                    <div className="space-y-3">
+                                        {sequence.map((word, index) => (
+                                            <div key={index} className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
+                                                    {index + 1}
+                                                </div>
+                                                <div className="flex-1 bg-white rounded-lg shadow-lg p-4 text-2xl font-semibold text-teal-700 text-center">
+                                                    {word}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="text-center text-sm text-gray-500 mt-4">
+                                    Watch carefully and remember the order...
+                                </div>
+                            </div>
+                        )}
+
+                        {gameState === 'recalling' && (
+                            <div>
+                                <div className="text-center mb-6">
+                                    <div className="text-sm text-gray-500 mb-2">
+                                        Word {currentRecallIndex + 1} of {sequence.length}
+                                    </div>
+                                    <div className="text-lg font-semibold text-teal-600 mb-2">
+                                        Enter word #{currentRecallIndex + 1}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                        Score: {score.correct} / {score.total}
+                                    </div>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-xl p-6 mb-4">
+                                    <div className="space-y-2 mb-6">
+                                        {sequence.map((word, index) => {
+                                            const isCurrentTarget = index === currentRecallIndex;
+                                            const answer = userAnswers.find(a => a.position === index);
+                                            
+                                            return (
+                                                <div key={index} className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${
+                                                        isCurrentTarget
+                                                            ? 'bg-teal-600 text-white animate-pulse'
+                                                            : answer
+                                                            ? answer.isCorrect
+                                                                ? 'bg-green-500 text-white'
+                                                                : 'bg-red-500 text-white'
+                                                            : 'bg-gray-300 text-gray-600'
+                                                    }`}>
+                                                        {answer ? (answer.isCorrect ? '✓' : '✗') : index + 1}
+                                                    </div>
+                                                    <div className={`flex-1 rounded-lg p-3 text-center font-semibold border-2 ${
+                                                        isCurrentTarget
+                                                            ? 'bg-teal-50 border-teal-400 border-dashed'
+                                                            : answer
+                                                            ? answer.isCorrect
+                                                                ? 'bg-green-50 border-green-400'
+                                                                : 'bg-red-50 border-red-400'
+                                                            : 'bg-gray-100 border-gray-300'
+                                                    }`}>
+                                                        {answer ? answer.userAnswer : isCurrentTarget ? '?' : '???'}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <form onSubmit={handleSubmit}>
+                                        <input
+                                            type="text"
+                                            value={userInput}
+                                            onChange={(e) => setUserInput(e.target.value)}
+                                            className="w-full text-2xl text-center border-2 border-teal-300 rounded-lg p-4 focus:outline-none focus:border-teal-600"
+                                            autoFocus
+                                            required
+                                            placeholder="Type the word..."
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="w-full mt-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                                        >
+                                            Submit
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {feedback && (
+                                    <div className={`text-center p-4 rounded-lg ${feedback.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                        {feedback.isCorrect ? (
+                                            <div className="font-semibold text-lg">✓ Correct!</div>
+                                        ) : (
+                                            <div>
+                                                <div className="font-semibold text-lg">✗ Incorrect</div>
+                                                <div className="text-sm mt-1">You entered: <strong>{feedback.userAnswer}</strong></div>
+                                                <div className="text-sm">Correct word was: <strong>{feedback.correctWord}</strong></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {gameState === 'completed' && (
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold text-gray-800 mb-4">Round Complete!</h2>
+                                
+                                <div className="bg-gradient-to-r from-teal-100 to-cyan-100 rounded-xl p-6 mb-6">
+                                    <div className="text-5xl font-bold text-teal-600 mb-2">
+                                        {score.correct} / {score.total}
+                                    </div>
+                                    <div className="text-gray-700 mb-4">
+                                        {Math.round((score.correct / score.total) * 100)}% accuracy
+                                    </div>
+                                    
+                                    <div className="mt-4 pt-4 border-t border-teal-200">
+                                        <div className="text-sm text-gray-600 mb-3">Review:</div>
+                                        <div className="space-y-2">
+                                            {sequence.map((word, index) => {
+                                                const answer = userAnswers[index];
+                                                return (
+                                                    <div key={index} className="flex items-center gap-3">
+                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                                            answer.isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                                                        }`}>
+                                                            {answer.isCorrect ? '✓' : '✗'}
+                                                        </div>
+                                                        <div className="flex-1 text-left">
+                                                            {!answer.isCorrect && (
+                                                                <div className="text-sm text-red-600 line-through">{answer.userAnswer}</div>
+                                                            )}
+                                                            <div className={`font-semibold ${answer.isCorrect ? 'text-green-700' : 'text-teal-700'}`}>
+                                                                {word}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <button
+                                    onClick={resetGame}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-8 rounded-lg flex items-center justify-center mx-auto transition-colors"
+                                >
+                                    <RotateCcw className="w-5 h-5 mr-2" />
+                                    New Round
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<WordRecallGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>
